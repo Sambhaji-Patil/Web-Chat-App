@@ -6,45 +6,51 @@
     display: flex;
     flex-direction: column;
 
-    /* video {
-      width: 100%;
-      max-height: 400px;
-      margin-top: 20px;
-      border-radius: 10px;
-      display: block;
-    }
 
-    .camera {
+    .cameraContainer {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: #000;
-      padding: 20px;
-      border-radius: 10px;
-      z-index: 1000;
-    }
-    
-    .camera video {
+      top: 0;
+      left: 0;
       width: 100%;
-      max-width: 400px;
-      border-radius: 10px;
-    }
-    
-    .camera button {
-      margin-top: 10px;
-      padding: 10px 20px;
-      background-color: #5183fe;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+
+      button{
+        background-color: #5183fe;
       color: white;
+      padding: 10px 20px;
       border: none;
       border-radius: 5px;
       cursor: pointer;
-      display: block;
-      width: 100%;
-    } */
+      }
+    }
     
+    .capturedImageContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
     
-  
+    .capturedImageContainer img {
+      max-width: 80%;
+      max-height: 80%;
+      margin-bottom: 10px;
+    }
+    
+    .capturedImageContainer button {
+      background-color: #5183fe;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
     .top {
       padding: 20px;
       display: flex;

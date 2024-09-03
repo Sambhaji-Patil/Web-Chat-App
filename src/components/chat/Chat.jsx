@@ -23,6 +23,12 @@ const Chat = () => {
     url: "",
   });
 
+  const [cameraStream, setCameraStream] = useState(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [capturedImg, setCapturedImg] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
   const { currentUser } = useUserStore();
   const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } =
     useChatStore();
@@ -43,6 +49,46 @@ const Chat = () => {
     };
   }, [chatId]);
 
+  const handleCameraClick = () => {
+    setCameraOpen(true);
+    if (navigator.mediaDevices.getUserMedia) {
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          setCameraStream(stream);
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        })
+        .catch((err) => console.log("Error accessing the camera", err));
+    }
+  };
+
+  const stopCameraStream = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    }
+    setCameraStream(null);
+  };
+
+  const handleCapture = () => {
+    const context = canvasRef.current.getContext("2d");
+    context.drawImage(
+      videoRef.current,
+      0,
+      0,
+      canvasRef.current.width,
+      canvasRef.current.height
+    );
+    const image = canvasRef.current.toDataURL("image/png");
+    setCapturedImg(image);
+    setCameraOpen(false);
+  };
+
+  const handleRetry = () => {
+    setCapturedImg(null);
+    handleCameraClick();
+  };
+
   const handleEmoji = (e) => {
     setText((prev) => prev + e.emoji);
     setOpen(false);
@@ -58,13 +104,16 @@ const Chat = () => {
   };
 
   const handleSend = async () => {
-    if (text === "") return;
+    if (text === "" && !capturedImg) return;
 
     let imgUrl = null;
 
     try {
       if (img.file) {
         imgUrl = await upload(img.file);
+      } else if (capturedImg) {
+        const blob = await (await fetch(capturedImg)).blob();
+        imgUrl = await upload(blob);
       }
 
       await updateDoc(doc(db, "chats", chatId), {
@@ -101,30 +150,39 @@ const Chat = () => {
       });
     } catch (err) {
       console.log(err);
-    } finally{
-    setImg({
-      file: null,
-      url: "",
-    });
-
-    setText("");
+    } finally {
+      setImg({
+        file: null,
+        url: "",
+      });
+      setCapturedImg(null);
+      setText("");
+      stopCameraStream(); // Stop the camera stream
     }
   };
 
+  // Stop the camera stream when `cameraOpen` changes to false
+  useEffect(() => {
+    if (!cameraOpen) {
+      stopCameraStream();
+    }
+  }, [cameraOpen]);
+
   // Web Speech API integration
   useEffect(() => {
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if ("SpeechRecognition" in window || "webkitSpeechRecognition" in window) {
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
 
-      recognition.lang = 'en-US';
+      recognition.lang = "en-US";
       recognition.continuous = false;
       recognition.interimResults = false;
 
-      const micButton = document.getElementById('micButton');
-      
+      const micButton = document.getElementById("micButton");
+
       if (micButton) {
-        micButton.addEventListener('click', () => {
+        micButton.addEventListener("click", () => {
           recognition.start();
         });
       }
@@ -135,14 +193,14 @@ const Chat = () => {
       };
 
       recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        console.error("Speech recognition error:", event.error);
       };
 
       recognition.onspeechend = () => {
         recognition.stop();
       };
     } else {
-      console.error('Speech recognition not supported in this browser.');
+      console.error("Speech recognition not supported in this browser.");
     }
   }, []);
 
@@ -186,6 +244,25 @@ const Chat = () => {
         )}
         <div ref={endRef}></div>
       </div>
+      {cameraOpen && (
+        <div className="cameraContainer">
+          <video ref={videoRef} width="100%" height="100%" />
+          <canvas
+            ref={canvasRef}
+            style={{ display: "none" }} // Hide the canvas element
+            width={640} // Set width and height based on your requirements
+            height={480}
+          />
+          <button onClick={handleCapture}>Capture</button>
+        </div>
+      )}
+
+      {capturedImg && (
+        <div className="capturedImageContainer">
+          <img src={capturedImg} alt="Captured" />
+          <button onClick={handleRetry}>Retry</button>
+        </div>
+      )}
       <div className="bottom">
         <div className="icons">
           <label htmlFor="file">
@@ -197,7 +274,7 @@ const Chat = () => {
             style={{ display: "none" }}
             onChange={handleImg}
           />
-          <img src="./camera.png" alt="" />
+          <img src="./camera.png" alt="" onClick={handleCameraClick} />
           <img id="micButton" src="./mic.png" alt="Mic" />
         </div>
         <input
@@ -211,15 +288,13 @@ const Chat = () => {
           onChange={(e) => setText(e.target.value)}
           disabled={isCurrentUserBlocked || isReceiverBlocked}
         />
-        <div className="emoji">
-          <img
-            src="./emoji.png"
-            alt=""
-            onClick={() => setOpen((prev) => !prev)}
-          />
-          <div className="picker">
-            <EmojiPicker open={open} onEmojiClick={handleEmoji} />
-          </div>
+        <div className="emojis">
+          <img src="./emoji.png" alt="" onClick={() => setOpen(!open)} />
+          {open && (
+            <div className="picker">
+              <EmojiPicker onEmojiClick={handleEmoji} />
+            </div>
+          )}
         </div>
         <button
           className="sendButton"
